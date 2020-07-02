@@ -1,4 +1,6 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer')
+const superagent = require('superagent')
+const cheerio = require('cheerio')
 
 function mwait(delay) {
     return new Promise((resolve, reject) => {
@@ -8,7 +10,8 @@ function mwait(delay) {
     })
 }
 
-async function saveInfo(browser, nowList) {
+async function saveInfo(browser, nowList, typeInfo) {
+    let { firstType, secondType,  thirdType } = typeInfo
     let infoList = []
     // for(let n = 0; n < nowList.length; n++) {
     for(let n = 0; n < 2; n++) {
@@ -20,7 +23,20 @@ async function saveInfo(browser, nowList) {
             let imgReg = /\/\/www.lgstatic.com\/thumbnail_160x160(.*)/igs
             return imgReg.exec(el.getAttribute('src'))[1]
         })
+        let companyName = await detailPage.$eval('#job_company .fl-cn', el => {
+            return el.innerHTML.replace(/\s/g,"")
+        })
+        let companyInfos =  await detailPage.$$eval('#job_company .c_feature li .c_feature_name', els => {
+            let currList = []
+            els.forEach(item => {
+                currList.push(item.innerText.replace(/\s/g,""))
+            })
+            return currList.splice(0,3)
+        })
         let positionId = await detailPage.$eval('#jobid', el => {
+            return el.getAttribute('value')
+        })
+        let companyId = await detailPage.$eval('#companyid', el => {
             return el.getAttribute('value')
         })
         let positionName = await detailPage.$eval('.position-content .job-name', el => {
@@ -40,18 +56,46 @@ async function saveInfo(browser, nowList) {
             })
             return currList
         })
+        let positionAdvantage = await detailPage.$eval('#job_detail .job-advantage p', el => {
+            return el.innerText.replace(/\s/g,'')
+        })
+        let longtitude = await detailPage.$eval('#job_detail .job-address input[name=positionLng]', el => {
+            return el.getAttribute('value')
+        })
+        let latitude = await detailPage.$eval('#job_detail .job-address input[name=positionLat]', el => {
+            return el.getAttribute('value')
+        })
+        let district = await detailPage.$$eval('#job_detail .work_addr a', els => {
+            return els[1].innerText
+        })
+        let positionDesc = await detailPage.$eval('#job_detail .job_bt .job-detail', el => {
+            return el.innerHTML.replace(/(\s|<p>|<\/p>)/g,'').split('<br>')
+        })
         //每一页为一个单位想数据库导入
         infoList.push(
             {
                 positionId,
+                companyId,
                 positionName,
+                companyName,
                 companyLogo,
+                companyLabelList: companyInfos[0].split(','),
+                financeStage: companyInfos[1],
+                companySize: companyInfos[2],
                 positionLabels,
+                positionAdvantage,
+                positionDesc,
+                district,
+                longtitude,
+                latitude,
                 salary: requests[0],
                 city: requests[1],
                 workYear: requests[2],
                 education: requests[3],
-                jobNature: requests[4]
+                jobNature: requests[4],
+                firstType,
+                secondType,
+                thirdType
             }
         )
         await detailPage.close()
@@ -61,8 +105,7 @@ async function saveInfo(browser, nowList) {
 }
 
 async function singlePage(browser, keysList) {
-    let pagesList = []
-    //关键字
+    // 关键字
     for(let i = 0; i<1; i++) {
         //页数
         for(let j = 1; j < 2; j++) {
@@ -79,7 +122,7 @@ async function singlePage(browser, keysList) {
                 return currList
             })
             // pagesList.push(...singlePageList)
-            await saveInfo(browser, singlePageList)
+            await saveInfo(browser, singlePageList, keysList[i])
             await singleKeyPage.close()
         }
     }
@@ -89,18 +132,25 @@ async function getkeys() {
     let browser = await puppeteer.launch({headless:false});
     let page = await browser.newPage();
     await page.goto('https://www.lagou.com/');
-    
-    let keysList = await page.$$eval('#sidebar a', (eles) => {
-        let currList = []
-        eles.forEach(item => {
-            let currObj = {
-                key: item.innerHTML.replace(/[<\/h3>]/g,""),
-                href: item.getAttribute("href")
-            }
-            currList.push(currObj)
+
+    const url = 'https://www.lagou.com/'
+    let res = await superagent.get(url)
+    const $ = cheerio.load(res.text)
+    let keysList = []
+    $('#sidebar .menu_box').each((i, el) => {
+        $(el).find('.menu_sub dl').each((_i, _el) => {
+            $(_el).find('a').each((__i, __el) => {
+                let keysObj = {
+                    firstType: $(el).find('.category-list h2').text().replace(/\s/igs,""),
+                    secondType: $(_el).find('dt').text().replace(/\s/igs,""),
+                    thirdType: $(__el).text().replace(/\s/igs,""),
+                    href: $(__el).attr('href')
+                }
+                keysList.push(keysObj)
+            })
         })
-        return currList
     })
+
     await singlePage(browser, keysList)
 }
 
