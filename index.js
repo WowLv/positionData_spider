@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer')
 const superagent = require('superagent')
 const cheerio = require('cheerio')
+const axios = require('axios')
 
 function mwait(delay) {
     return new Promise((resolve, reject) => {
@@ -10,14 +11,21 @@ function mwait(delay) {
     })
 }
 
-async function saveInfo(browser, nowList, typeInfo) {
+async function saveInfo(browser, nowPageList, typeInfo) {
     let { firstType, secondType,  thirdType } = typeInfo
-    let infoList = []
-    // for(let n = 0; n < nowList.length; n++) {
+    // let infoList = []
+    // for(let n = 0; n < nowPageList.length; n++) {
     for(let n = 0; n < 2; n++) {
         await mwait(3000).then(msg => console.log(msg))
         let detailPage = await browser.newPage()
-        await detailPage.goto(nowList[n], { waitUntil: 'networkidle0' })
+        await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
+        //请求超时关闭页面等待重新请求
+        await detailPage.on('requestfailed', () => {
+            detailPage.close()
+            console.log('请求超时，重新访问')
+            mwait(3000).then(msg => console.log(msg))
+            detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
+        })
         //爬取详细信息
         let companyLogo = await detailPage.$eval('#job_company .b2', el => {
             let imgReg = /\/\/www.lgstatic.com\/thumbnail_160x160(.*)/igs
@@ -71,37 +79,39 @@ async function saveInfo(browser, nowList, typeInfo) {
         let positionDesc = await detailPage.$eval('#job_detail .job_bt .job-detail', el => {
             return el.innerHTML.replace(/(\s|<p>|<\/p>)/g,'').split('<br>')
         })
-        //每一页为一个单位想数据库导入
-        infoList.push(
-            {
-                positionId,
-                companyId,
-                positionName,
-                companyName,
-                companyLogo,
-                companyLabelList: companyInfos[0].split(','),
-                financeStage: companyInfos[1],
-                companySize: companyInfos[2],
-                positionLabels,
-                positionAdvantage,
-                positionDesc,
-                district,
-                longtitude,
-                latitude,
-                salary: requests[0],
-                city: requests[1],
-                workYear: requests[2],
-                education: requests[3],
-                jobNature: requests[4],
-                firstType,
-                secondType,
-                thirdType
-            }
-        )
+        //每一个职位为一个单位想数据库导入
+        let infoObj = {
+            positionId,
+            companyId,
+            positionName,
+            companyName,
+            companyLogo,
+            companyLabelList: companyInfos[0].split(','),
+            financeStage: companyInfos[1],
+            companySize: companyInfos[2],
+            positionLabels,
+            positionAdvantage,
+            positionDesc,
+            district,
+            longtitude,
+            latitude,
+            salary: requests[0],
+            city: requests[1],
+            workYear: requests[2],
+            education: requests[3],
+            jobNature: requests[4],
+            firstType,
+            secondType,
+            thirdType
+        }
+        // axios.post插入数据库
+        let res = await axios.post('http://127.0.0.1:3000/posDetail', {
+            data: infoObj
+        })
+        await mwait(1000).then(msg => console.log(msg))
+        console.log(res.data)
         await detailPage.close()
     }
-    // axios.post插入数据库
-    console.log(infoList)
 }
 
 async function singlePage(browser, keysList) {
