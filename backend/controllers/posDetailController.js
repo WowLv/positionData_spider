@@ -47,15 +47,8 @@ postPosDetail = (req, res) => {
                     })
                 }else {
                     let sql = "insert into new_posdetail (positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-                    let sqlArr = []
-                    arr = [ positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType ]
-                    arr.map((item, index) => {
-                        if(item instanceof Array) {
-                            sqlArr.push(item.join(','))
-                        }else {
-                            sqlArr.push(item)
-                        }
-                    })
+
+                    let sqlArr = [ positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType ]
                     console.log(sqlArr)
                     query(sql, sqlArr, (err, row) => {
                         if(err) {
@@ -93,7 +86,7 @@ function getResult(row) {
         Object.values(row[i]).map((item, index) => {
             if(item) {
                 if(item.indexOf("[") !== -1) {
-                    obj[keys[index]] = item.split(/[\[\]]/g)[1].replace(/['\s]/g,"").split(',')
+                    obj[keys[index]] = item.split(/[\[\]]/g)[1].replace(/["\s]/g,"").split(',')
                 }else {
                     obj[keys[index]] = item
                 }
@@ -110,7 +103,7 @@ getPosDetail = (req, res) => {
     if(req.query.pid) {
         let pid = req.query.pid
         // sql = " select * from pos_detail where pid=?"
-        sql = " select * from pos_detail where positionId=?"
+        sql = " select * from new_posdetail where positionId=?"
         sqlArr = [pid]
         query(sql, sqlArr, (err, row) => {
             if(err) {
