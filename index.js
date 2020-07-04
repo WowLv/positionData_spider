@@ -14,16 +14,16 @@ function mwait(delay) {
 async function saveInfo(browser, nowPageList, typeInfo) {
     let { firstType, secondType,  thirdType } = typeInfo
     for(let n = 0; n < nowPageList.length; n++) {
-        await mwait(3000).then(msg => console.log(msg))
         if(n%2 !== 0) {
+            await mwait(2000).then(msg => console.log(msg))
             let detailPage = await browser.newPage()
             await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
             //请求超时关闭页面等待重新请求
-            await detailPage.on('requestfailed', () => {
-                detailPage.close()
+            await detailPage.on('requestfailed', async () => {
+                await detailPage.close()
                 console.log('请求超时，重新访问')
-                mwait(3000).then(msg => console.log(msg))
-                detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
+                await mwait(3000).then(msg => console.log(msg))
+                await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
             })
             //爬取详细信息
             let companyLogo = await detailPage.$eval('#job_company .b2', el => {
@@ -77,12 +77,26 @@ async function saveInfo(browser, nowPageList, typeInfo) {
             let latitude = await detailPage.$eval('#job_detail .job-address input[name=positionLat]', el => {
                 return el.getAttribute('value')
             })
-            let district = await detailPage.$$eval('#job_detail .work_addr a', els => {
-                return els[1].innerText
-            })
+            // let district = await detailPage.$$eval('#job_detail .work_addr a', els => {
+            //     return els[1].innerText
+            // })
             let positionDesc = await detailPage.$eval('#job_detail .job_bt .job-detail', el => {
                 return el.innerHTML.replace(/&nbsp;|\n|<\/p>[\s<(?!p).*?>]/g,'').split(/<p>|<br>/)
             })
+            let local = await axios.get('https://restapi.amap.com/v3/geocode/regeo', {
+                params: {
+                    key: 'ca71f341bd8d847d79b958d2c40b4532',
+                    s: 'rsv3',
+                    location: `${longtitude},${latitude}`
+                }
+            })
+            let city
+            if(local.data.regeocode.addressComponent.city instanceof Array) {
+                city = local.data.regeocode.addressComponent.province
+            }else {
+                city = local.data.regeocode.addressComponent.city
+            }
+            // 
             //每一个职位为一个单位想数据库导入
             let infoObj = {
                 positionId,
@@ -96,11 +110,12 @@ async function saveInfo(browser, nowPageList, typeInfo) {
                 positionLabels: JSON.stringify(positionLabels),
                 positionAdvantage: JSON.stringify(positionAdvantage.split(/,|、/)),
                 positionDesc: JSON.stringify(positionDesc),
-                district,
+                district: local.data.regeocode.addressComponent.district,
+                city_province: local.data.regeocode.addressComponent.province,
                 longtitude,
                 latitude,
                 salary: requests[0],
-                city: requests[1],
+                city,
                 workYear: requests[2],
                 education: requests[3],
                 jobNature: requests[4],
@@ -108,6 +123,7 @@ async function saveInfo(browser, nowPageList, typeInfo) {
                 secondType,
                 thirdType
             }
+            console.log(infoObj)
             // axios.post插入数据库
             let res = await axios.post('http://127.0.0.1:3000/posDetail', {
                 data: infoObj
@@ -123,11 +139,12 @@ async function saveInfo(browser, nowPageList, typeInfo) {
 
 async function singlePage(browser, keysList) {
     // 关键字
-    for(let i = 0; i<1; i++) {
+    for(let i = 4; i<keysList.length; i++) {
+        console.log(`当前爬取分类为 -- "${keysList[i].thirdType}"`)
         //页数
-        for(let j = 1; j < 2; j++) {
+        for(let j = 6; j < 10; j++) {
             console.log(`准备爬取第${j}页`)
-            await mwait(3000).then(msg => {
+            await mwait(1000).then(msg => {
                 console.log(msg)
             })
             let singleKeyPage = await browser.newPage()

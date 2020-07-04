@@ -15,6 +15,7 @@ postPosDetail = (req, res) => {
                 positionLabels,
                 positionAdvantage,
                 positionDesc,
+                city_province,
                 district,
                 longtitude,
                 latitude,
@@ -46,9 +47,9 @@ postPosDetail = (req, res) => {
                             msg: '该positionId已存在'
                     })
                 }else {
-                    let sql = "insert into new_posdetail (positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                    let sql = "insert into new_posdetail (positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, city_province, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-                    let sqlArr = [ positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType ]
+                    let sqlArr = [ positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, city_province, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType ]
                     console.log(sqlArr)
                     query(sql, sqlArr, (err, row) => {
                         if(err) {
