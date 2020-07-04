@@ -2,7 +2,7 @@ var query = require('../util/dbconfig');
 const POSLIST_VALUE = 'positionId,positionName,companyShortName,companyLogo,city,workYear,education,famousCompany,salary';
 
 postPosDetail = (req, res) => {
-    if(Object.keys(req.body.data).length === 22) {
+    if(Object.keys(req.body.data).length === 24 && req.body.data.positionDesc.indexOf(/[<>\\]/) === -1) {
         let {   
                 positionId,
                 companyId,
@@ -26,7 +26,8 @@ postPosDetail = (req, res) => {
                 jobNature,
                 firstType,
                 secondType,
-                thirdType
+                thirdType,
+                createTime
             } = req.body.data
 
             let querySql = "select * from new_posdetail where positionId=?"
@@ -47,9 +48,9 @@ postPosDetail = (req, res) => {
                             msg: '该positionId已存在'
                     })
                 }else {
-                    let sql = "insert into new_posdetail (positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, city_province, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                    let sql = "insert into new_posdetail (positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, city_province, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType, createTime) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-                    let sqlArr = [ positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, city_province, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType ]
+                    let sqlArr = [ positionId, companyId, positionName, companyName, companyLogo, companyLabelList, financeStage, companySize, positionLabels, positionAdvantage, positionDesc, city_province, district, longtitude, latitude, salary, city, workYear, education, jobNature, firstType, secondType, thirdType, createTime ]
                     console.log(sqlArr)
                     query(sql, sqlArr, (err, row) => {
                         if(err) {

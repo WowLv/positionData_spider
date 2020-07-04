@@ -14,19 +14,19 @@ function mwait(delay) {
 async function saveInfo(browser, nowPageList, typeInfo) {
     let { firstType, secondType,  thirdType } = typeInfo
     for(let n = 0; n < nowPageList.length; n++) {
-        if(n%2 !== 0) {
-            await mwait(2000).then(msg => console.log(msg))
+        if(n%2 === 0) {
+            await mwait(1500).then(msg => console.log(msg))
             let detailPage = await browser.newPage()
             await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
             //请求超时关闭页面等待重新请求
-            await detailPage.on('requestfailed', async () => {
-                await detailPage.close()
-                console.log('请求超时，重新访问')
-                await mwait(3000).then(msg => console.log(msg))
-                await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
-            })
+            // await detailPage.on('requestfailed', async () => {
+            //     await detailPage.close()
+            //     console.log('请求超时，重新访问')
+            //     await mwait(3000).then(msg => console.log(msg))
+            //     await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
+            // })
             //爬取详细信息
-            let companyLogo = await detailPage.$eval('#job_company .b2', el => {
+            let companyLogo = await detailPage.$eval('#job_company img', el => {
                 let imgReg = /\/\/www.lgstatic.com\/thumbnail_160x160(.*)/igs
                 return imgReg.exec(el.getAttribute('src'))[1]
             })
@@ -96,6 +96,45 @@ async function saveInfo(browser, nowPageList, typeInfo) {
             }else {
                 city = local.data.regeocode.addressComponent.city
             }
+            let createTime = await detailPage.$eval('.job_request .publish_time', el => {
+                if(el.innerText.indexOf('-') !== -1) {
+                    return el.innerText.split(' ')[0].trim()
+                }else if(el.innerText.indexOf('天前') !== -1){
+                    let day = el.innerText.split('天前')[0]
+                    let date = new Date(Date.now() - 1000 * 60 * 60 * 24 * parseInt(day))
+                    let strDate = date.getFullYear()+"-";
+                    if(date.getMonth()<10){
+                        var s = date.getMonth()+1+"-";
+                        strDate += "0"+s;
+                    }else{
+                        strDate += date.getMonth()+1+"-";
+                    }
+
+                    if(date.getDate()<10){
+                         strDate += "0"+date.getDate();
+                    }else{
+                        strDate += date.getDate();
+                    }
+                    return strDate
+                }else {
+                    let date = new Date(Date.now())
+                    let strDate = date.getFullYear()+"-";
+                    if(date.getMonth()<10){
+                        var s = date.getMonth()+1+"-";
+                        strDate += "0"+s;
+                    }else{
+                        strDate += date.getMonth()+1+"-";
+                    }
+
+                    if(date.getDate()<10){
+                         strDate += "0"+date.getDate();
+                    }else{
+                        strDate += date.getDate();
+                    }
+                    return strDate
+                }
+            })
+
             // 
             //每一个职位为一个单位想数据库导入
             let infoObj = {
@@ -121,9 +160,10 @@ async function saveInfo(browser, nowPageList, typeInfo) {
                 jobNature: requests[4],
                 firstType,
                 secondType,
-                thirdType
+                thirdType,
+                createTime
             }
-            console.log(infoObj)
+            // console.log(infoObj)
             // axios.post插入数据库
             let res = await axios.post('http://127.0.0.1:3000/posDetail', {
                 data: infoObj
@@ -139,12 +179,12 @@ async function saveInfo(browser, nowPageList, typeInfo) {
 
 async function singlePage(browser, keysList) {
     // 关键字
-    for(let i = 4; i<keysList.length; i++) {
+    for(let i = 0; i<keysList.length; i++) {
         console.log(`当前爬取分类为 -- "${keysList[i].thirdType}"`)
         //页数
-        for(let j = 6; j < 10; j++) {
+        for(let j = 1; j < 10; j++) {
             console.log(`准备爬取第${j}页`)
-            await mwait(1000).then(msg => {
+            await mwait(2000).then(msg => {
                 console.log(msg)
             })
             let singleKeyPage = await browser.newPage()
