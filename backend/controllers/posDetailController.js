@@ -1,8 +1,8 @@
 var query = require('../util/dbconfig');
-const POSLIST_VALUE = 'positionId,positionName,companyShortName,companyLogo,city,workYear,education,famousCompany,salary';
+const POSLIST_VALUE = 'positionId,positionName,companyName,companyLogo,city,workYear,education,salary';
 
 postPosDetail = (req, res) => {
-    if(Object.keys(req.body.data).length === 24 && req.body.data.positionDesc.indexOf(/[<>\\]/) === -1) {
+    if(Object.keys(req.body.data).length === 24 && !/[<>\\]/.test(req.body.data.positionDesc)) {
         let {   
                 positionId,
                 companyId,
@@ -134,7 +134,7 @@ searchPos = (req, res) => {
         _page = 0
     }
     let _key = `%${key}%`
-    let originSql = 'concat(positionName,companyShortName,secondType,firstType) like ?'
+    let originSql = 'concat(positionName,companyName,secondType,firstType) like ?'
     let originArr = [_key]
     if(location !== 'undefined') {
         let _location = `%${location}%`
@@ -160,7 +160,7 @@ searchPos = (req, res) => {
             originArr.push(attr)
         })
     }
-    sql = `select ${POSLIST_VALUE} from pos_detail where ${originSql} limit ${_page},10`
+    sql = `select ${POSLIST_VALUE} from new_posdetail where ${originSql} limit ${_page},10`
     sqlArr = originArr
     console.log(sql)
     console.log(sqlArr)
@@ -183,7 +183,7 @@ searchPos = (req, res) => {
 getPosList = (req, res) => {
     if(req.query.page) {
         let page = (req.query.page - 1) * 10
-        sql = `select ${POSLIST_VALUE} from pos_detail limit ${page},10`
+        sql = `select ${POSLIST_VALUE} from new_posdetail limit ${page},10`
         sqlArr = []
         query(sql, sqlArr, (err, row) => {
             if(err) {
@@ -200,7 +200,7 @@ getPosList = (req, res) => {
             }
         })
     }else {
-        sql = `select ${POSLIST_VALUE} from pos_detail limit 0,10`
+        sql = `select ${POSLIST_VALUE} from new_posdetail limit 0,10`
         sqlArr = []
         query(sql, sqlArr, (err, row) => {
             if(err) {

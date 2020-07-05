@@ -2,6 +2,8 @@ const puppeteer = require('puppeteer')
 const superagent = require('superagent')
 const cheerio = require('cheerio')
 const axios = require('axios')
+var _currentkey = 110
+var _currentPage = 1
 
 function mwait(delay) {
     return new Promise((resolve, reject) => {
@@ -14,17 +16,19 @@ function mwait(delay) {
 async function saveInfo(browser, nowPageList, typeInfo) {
     let { firstType, secondType,  thirdType } = typeInfo
     for(let n = 0; n < nowPageList.length; n++) {
-        if(n%2 === 0) {
-            await mwait(1500).then(msg => console.log(msg))
+        if(n%2 !== 0) {
+            await mwait(2000).then(msg => console.log(msg))
             let detailPage = await browser.newPage()
-            await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
-            //请求超时关闭页面等待重新请求
-            // await detailPage.on('requestfailed', async () => {
-            //     await detailPage.close()
-            //     console.log('请求超时，重新访问')
-            //     await mwait(3000).then(msg => console.log(msg))
-            //     await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
-            // })
+            try {
+                await detailPage.goto(nowPageList[n], { waitUntil: 'networkidle0' })
+            } catch(err) {
+                //请求超时关闭页面等待重新请求
+                await detailPage.close()
+                await browser.close()
+                console.log('请求超时，重新访问')
+                await mwait(5000).then(msg => console.log(msg))
+                await getkeys()
+            }
             //爬取详细信息
             let companyLogo = await detailPage.$eval('#job_company img', el => {
                 let imgReg = /\/\/www.lgstatic.com\/thumbnail_160x160(.*)/igs
@@ -81,7 +85,7 @@ async function saveInfo(browser, nowPageList, typeInfo) {
             //     return els[1].innerText
             // })
             let positionDesc = await detailPage.$eval('#job_detail .job_bt .job-detail', el => {
-                return el.innerHTML.replace(/&nbsp;|\n|<\/p>[\s<(?!p).*?>]/g,'').split(/<p>|<br>/)
+                return el.innerHTML.replace(/&nbsp;|\n|<\/p>[\s<(?!p).*?>]/g,'').split(/p>|<p>|<br>/)
             })
             let local = await axios.get('https://restapi.amap.com/v3/geocode/regeo', {
                 params: {
@@ -166,7 +170,8 @@ async function saveInfo(browser, nowPageList, typeInfo) {
             // console.log(infoObj)
             // axios.post插入数据库
             let res = await axios.post('http://127.0.0.1:3000/posDetail', {
-                data: infoObj
+                data: infoObj,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
             })
             console.log('爬取成功,准备导入如数据库')
             await mwait(1000).then(msg => console.log(msg))
@@ -179,11 +184,21 @@ async function saveInfo(browser, nowPageList, typeInfo) {
 
 async function singlePage(browser, keysList) {
     // 关键字
-    for(let i = 0; i<keysList.length; i++) {
-        console.log(`当前爬取分类为 -- "${keysList[i].thirdType}"`)
+    for(let i = _currentkey; i<keysList.length; i++) {
+        _currentkey = i
+        console.log(`当前爬取分类为 => "${i} - ${keysList[i].thirdType}"`)
+        await mwait(3000).then(msg => {
+            console.log(msg)
+        })
         //页数
-        for(let j = 1; j < 10; j++) {
+        for(let j = _currentPage; j <= 10; j++) {
+            
             console.log(`准备爬取第${j}页`)
+            if(j === 10) {
+                _currentPage = 1
+            } else {
+                _currentPage = j
+            }
             await mwait(2000).then(msg => {
                 console.log(msg)
             })
