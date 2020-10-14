@@ -1,5 +1,67 @@
 var query = require('../util/dbconfig');
+const fs = require('fs');
 const POSLIST_VALUE = 'positionId,positionName,companyName,companyLogo,city,workYear,education,salary';
+
+getId = (req, res) => {
+    let sql = `select positionId from new`
+    query(sql, [], (err, row) => {
+        if(err) {
+            res.json({
+                code: 400,
+                msg: '查询失败'
+            })
+        }else {
+            fs.writeFile('./positionId.json',JSON.stringify(row),function(err){
+                if(err){
+                    console.log(err);
+                    res.json({
+                        code: 400,
+                        msg: '查询失败'
+                    })
+                }else{
+                    console.log("数据添加成功！");
+                    res.json({
+                        code: 200,
+                        msg: '查询成功'
+                    })
+                }
+            })
+        }
+    })
+}
+
+supplement = (req, res) => {
+    console.log(/[<>\\]/.test(req.body.data.positionDesc))
+    if(!/[<>\\]/.test(req.body.data.positionDesc)) {
+        let { positionId, positionDesc, city_province } = req.body.data
+            insertSql = `update new set positionDesc = ?, city_province = ? where positionId = ?`
+            insertSqlArr = [positionDesc, city_province, positionId]
+        query(insertSql, insertSqlArr, (err, row) => {
+            if(err) {
+                console.log(err)
+                res.json({
+                    code: 400,
+                    msg: '存储失败'
+                })
+            }else if(row.affectedRows > 0) {
+                console.log('存储成功')
+                res.json({
+                    code: 200,
+                    msg: '存储成功'
+                })
+            }
+        })
+    }else {
+        console.log(req.body.data)
+        console.log('数据不完整，不储存')
+        res.json({
+            code: 400,
+            msg: '数据不完整，不储存'
+        })
+    }
+    
+
+}
 
 postPosDetail = (req, res) => {
     if(Object.keys(req.body.data).length === 24 && !/[<>\\]/.test(req.body.data.positionDesc)) {
@@ -221,6 +283,8 @@ getPosList = (req, res) => {
 }
 
 module.exports = {
+    getId,
+    supplement,
     postPosDetail,
     getPosDetail,
     searchPos,
